@@ -1,0 +1,26 @@
+# CM4 Lite（SD 卡）的 A/B OTA 映像
+#   rpi-cm4 ＋ image-rota ＋ trixie-minbase ＋ rpiota
+# 版本號與 SSH 登入資訊由 build.sh 用「-- IGconf_…」傳入。
+
+device:
+  layer: rpi-cm4
+  variant: lite
+  hostname: rpiota
+  user1: pi
+  user1sudo: nopasswd   # 實驗用；實機檢查需要 sudo
+
+trait:
+  hw:storage:emmc: false
+  hw:storage:sd: true
+  hw:ethernet: true     # 依載板調整
+
+image:
+  layer: image-rota
+  name: rpiota
+  boot_part_size: 256M
+  system_part_size: 4G
+  data_part_size: 4G
+
+layer:
+  base: trixie-minbase
+  ota: rpiota

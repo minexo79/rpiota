@@ -1,0 +1,2 @@
+d /persistent/ota          0755 root root         -
+d /persistent/ota/incoming 0770 root rpiota -

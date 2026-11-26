@@ -1,0 +1,85 @@
+<!doctype html>
+<!--
+  OTA 更新頁（行為在 app.js）
+  Choose File ─> Update ─> PUT /api/upload ─> POST /api/apply
+                     輪詢 /api/status ─> log 窗
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Firmware Update</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/pure-min.css">
+  <style>
+    :root { color-scheme: light; --rpi-red: #c51a4a; /* Raspberry Pi 招牌紅 */ }
+    body { background: #fff; color: #1f2933; margin: 0; }
+    main { max-width: 40rem; margin: 0 auto; padding: 1.5rem 1rem; }
+    /* 區塊外框：Pure.css 沒有對應元件，框線顏色沿用 pure-table */
+    .panel { margin-bottom: 1rem; padding: 0 1rem 1rem; border: 1px solid #cbcbcb;
+             border-radius: 4px; }
+    .panel .row { margin-bottom: 0; }
+    .info { width: 100%; }
+    .info th { width: 1%; white-space: nowrap; text-align: left; }  /* 標題欄縮到剛好 */
+    .info td { overflow-wrap: anywhere; }
+    /* 進度條疊兩層同樣的文字：底層深字，上層紅底白字依百分比裁切 */
+    .bar { --percent: 0; position: relative; height: 2.2rem; margin: 1.25rem 0;
+           overflow: hidden; border: 1px solid #ccc; border-radius: 1.2rem;
+           background: #fafafa; }
+    .bar span { position: absolute; inset: 0; line-height: 2.2rem; text-align: center;
+                white-space: nowrap; }
+    .bar .fill { background: var(--rpi-red); color: #fff;
+                 clip-path: inset(0 calc(100% - var(--percent) * 1%) 0 0); }
+    .row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+    .button-rpi { flex: none; width: 8.5rem; background: var(--rpi-red); color: #fff;
+                  font-size: 1.05rem; }
+    #filename { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                white-space: nowrap; }
+    .logbox { border: 1px solid #ccc; background: #fafafa; }
+    .logbox summary { padding: .5rem .75rem; cursor: pointer; }  /* 只顯示收合箭頭 */
+    #log { box-sizing: border-box; height: 17rem; overflow-y: auto; margin: 0;
+           padding: 0 .75rem .75rem; font-size: .85rem; white-space: pre-wrap;
+           overflow-wrap: anywhere; }
+    @media (max-width: 30rem) {
+      .row { gap: .5rem; }
+      .panel { padding: 0 .75rem .75rem; }
+      .button-rpi { width: 6rem; padding-left: 0; padding-right: 0; font-size: .95rem; }
+    }
+  </style>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+<main>
+  <section class="panel">
+    <h4>Information</h4>
+    <table class="pure-table pure-table-horizontal info">
+      <tbody>
+        <tr><th scope="row">Version</th><td id="version">—</td></tr>
+        <tr><th scope="row">Device Name</th><td id="device">—</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="panel">
+    <h4>Upgrade</h4>
+    <div class="bar" id="progress" role="progressbar" aria-label="Progress"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <span id="progress-text">Connecting...</span>
+      <span class="fill" id="progress-fill" aria-hidden="true">Connecting...</span>
+    </div>
+    <div class="row">
+      <input type="file" id="file" accept=".ota" hidden>
+      <button type="button" class="pure-button button-rpi" id="choose">Choose File</button>
+      <span id="filename">No file chosen</span>
+      <button type="button" class="pure-button button-rpi" id="update" disabled>Update</button>
+    </div>
+  </section>
+  <section class="panel">
+    <h4>Log</h4>
+    <details class="logbox" id="logbox">
+      <summary aria-label="Show or hide messages"></summary>
+      <pre id="log" role="log" aria-label="Messages" tabindex="0"></pre>
+    </details>
+  </section>
+</main>
+</body>
+</html>

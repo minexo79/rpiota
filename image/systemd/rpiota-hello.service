@@ -1,0 +1,10 @@
+[Unit]
+Description=Hello OTA version printer
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/app/hello.py
+DynamicUser=yes
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+# 新版本開機後，這些服務都 active 才保留
+ssh.service
+avahi-daemon.service
+rpiota-web.service
+rpiota-hello.service

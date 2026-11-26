@@ -1,0 +1,15 @@
+[Unit]
+Description=OTA update web page
+RequiresMountsFor=/persistent
+After=systemd-tmpfiles-setup.service
+
+[Service]
+User=rpiota
+Group=rpiota
+Environment=PYTHONPATH=/usr/lib/rpiota
+ExecStart=/usr/bin/python3 -m rpiota.web
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

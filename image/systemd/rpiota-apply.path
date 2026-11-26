@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for an OTA update request
+RequiresMountsFor=/persistent
+
+[Path]
+PathExists=/persistent/ota/incoming/pending.ota
+
+[Install]
+WantedBy=multi-user.target
