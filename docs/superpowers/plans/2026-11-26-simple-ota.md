@@ -38,7 +38,7 @@ sparse 映像改由 Python 解析並寫入（`sparse.py`），不用 `simg2img` 
 
 **Interfaces — Produces:**
 - `env.Env(ota_dir, conf_dir, slot_dir, label_dir, os_release, autoboot, run, part_size)`；屬性 `incoming, pending, upload, part`；方法 `version() -> str`、`slot() -> "a"|"b"|"?"`
-- `state.read(env) -> dict`、`state.write(env, state, error=None, target=None, slot_dev=None)`、`state.atomic_write(path, text)`
+- `state.read(env) -> dict`、`state.write(env, state, error=None, target=None, slot_dev=None)`、`state.atomic_write(path, text)`（state.json）、`state.overwrite(path, text)`（FAT 上的 autoboot.txt）
 - `sparse.raw_size(path) -> int`、`sparse.write(stream, out, limit) -> int`（資料不合法丟 `ValueError`）
 - `bundle.BundleError(code)`、`Manifest`、`pack(boot, system, out, *, version, epoch, device_class="cm4")`、`read_manifest(path)`、`verify(path)`
 - `hello.run(env, count=None, sleep=time.sleep)`

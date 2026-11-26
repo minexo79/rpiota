@@ -17,9 +17,9 @@ trait:
 image:
   layer: image-rota
   name: rpiota
-  boot_part_size: 256M
-  system_part_size: 4G
-  data_part_size: 4G
+  boot_part_size: 128M
+  system_part_size: 1G
+  data_part_size:   1G
 
 layer:
   base: trixie-minbase

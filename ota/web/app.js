@@ -1,7 +1,7 @@
 /*
   OTA 更新頁的行為：上傳更新包、要求套用、顯示狀態與進度
   Choose File ─> Update ─> PUT /api/upload ─> POST /api/apply
-                     輪詢 /api/status ─> 版本、裝置名稱、進度條、log 窗
+                     輪詢 /api/status ─> 硬體資訊、裝置名稱、版本、進度條、log 窗
 */
 const STATES = {
   verifying: "Verifying package...",
@@ -15,7 +15,6 @@ const ERRORS = {
   bad_bundle: "Invalid or incomplete update package.",
   bad_hash: "Update package is corrupted.",
   wrong_device: "Update package is for a different device.",
-  not_newer: "Update package is not newer than the current version.",
   too_large: "Image is larger than the partition.",
   busy: "Another update is in progress.",
   write_failed: "Writing failed.",
@@ -84,7 +83,9 @@ function render(status) {
   }
   version = status.version;
   $("version").textContent = version;
-  $("device").textContent = status.device;
+  for (const id of ["board", "cpu", "gpu", "ram", "device"]) {
+    $(id).textContent = status[id];
+  }
   const key = JSON.stringify([status.state, status.error, status.target, status.progress]);
   if (key !== lastKey) {
     // 第一次載入時看到的結束狀態是上一次的結果

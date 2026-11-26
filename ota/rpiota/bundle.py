@@ -159,12 +159,12 @@ def pack(boot_sparse, system_sparse, out, *, version, epoch, device_class=DEVICE
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="打包 OTA 更新包")
+    parser = argparse.ArgumentParser(description="Build an OTA update bundle")
     parser.add_argument("--image-dir", type=Path, required=True,
-                        help="含 boot.sparse 與 system.sparse 的目錄")
-    parser.add_argument("--version", required=True, help="要和映像內的 version 相同")
+                        help="directory containing boot.sparse and system.sparse")
+    parser.add_argument("--version", required=True, help="must match the version inside the image")
     parser.add_argument("--epoch", type=int, required=True,
-                        help="映像的 IG_SOURCE_DATE_EPOCH")
+                        help="IG_SOURCE_DATE_EPOCH of the image")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--device-class", default=DEVICE_CLASS)
     args = parser.parse_args(argv)
@@ -172,9 +172,9 @@ def main(argv=None):
         pack(args.image_dir / "boot.sparse", args.image_dir / "system.sparse", args.out,
              version=args.version, epoch=args.epoch, device_class=args.device_class)
     except UpdateError:
-        sys.exit("版本號只能用英數字與 . _ + -，最長 64 字")
+        sys.exit("version may only contain letters, digits and . _ + -, up to 64 characters")
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
-        sys.exit(f"打包失敗：{error}")
+        sys.exit(f"bundling failed: {error}")
     print(args.out)
 
 

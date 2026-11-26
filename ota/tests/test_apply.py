@@ -66,14 +66,58 @@ class ApplyTest(unittest.TestCase):
         self.assertNotIn("progress", state.read(self.env))
 
     def test_rejects(self):
-        for code, options in (("wrong_device", {"device_class": "pi5"}),
-                              ("not_newer", {"epoch": 1000})):
-            with self.subTest(code):
-                before = self.contents()
-                self.stage(**options)
+        before = self.contents()
+        self.stage(device_class="pi5")
+        apply.apply(self.env)
+        self.assert_failed("wrong_device")
+        self.assertEqual(self.contents(), before)
+        self.assertTrue(self.stamp("b").exists())
+
+    def stamp(self, slot):
+        return self.env.persistent_slots / f"system_{slot}" / "var" / ".updated"
+
+    def test_older_and_same_version_install(self):
+        # make_env 的目前映像 epoch 是 1000
+        for epoch in (500, 1000):
+            with self.subTest(epoch):
+                state.write(self.env, "idle")
+                self.stage(epoch=epoch)
                 apply.apply(self.env)
-                self.assert_failed(code)
-                self.assertEqual(self.contents(), before)
+                self.assertEqual(state.read(self.env)["state"], "pending")
+
+    def test_resets_target_var(self):
+        self.stage()
+        apply.apply(self.env)
+        self.assertFalse(self.stamp("b").exists())
+        self.assertTrue(self.stamp("a").exists())
+
+    def test_missing_stamp_is_ok(self):
+        self.stamp("b").unlink()
+        self.stage()
+        apply.apply(self.env)
+        self.assertEqual(state.read(self.env)["state"], "pending")
+
+    def assert_nothing_written(self):
+        before = self.contents()
+        self.stage()
+        apply.apply(self.env)
+        self.assert_failed("write_failed")
+        self.assertEqual(self.contents(), before)
+        self.assertTrue(self.stamp("a").exists())
+
+    def test_unknown_target_slot_writes_nothing(self):
+        (self.env.label_dir / "system_b").unlink()
+        self.assert_nothing_written()
+
+    def test_missing_var_directory_writes_nothing(self):
+        self.stamp("b").unlink()
+        self.stamp("b").parent.rmdir()
+        self.assert_nothing_written()
+
+    def test_stamp_removal_failure_writes_nothing(self):
+        self.stamp("b").unlink()
+        self.stamp("b").mkdir()
+        self.assert_nothing_written()
 
     def test_bad_hash(self):
         self.stage()

@@ -1,6 +1,7 @@
 """以 root 執行：檢查 pending.ota、寫入閒置 slot、試開機。
 
-pending.ota ─> 檢查（雜湊、機型、版本、容量）─> 寫 boot、system ─> state=pending
+pending.ota ─> 檢查（雜湊、機型、容量）─> 重設目標 slot 的 /var
+            ─> 寫 boot、system ─> state=pending
             ─> 刪掉 pending.ota ─> reboot "0 tryboot"
 """
 import logging
@@ -29,11 +30,28 @@ def _targets(env, manifest):
         other = env.slot_dir / "other" / part
         active = env.slot_dir / "active" / part
         if os.path.samefile(other, active):
-            raise ValueError(f"{other} 指向目前使用中的分割區")
+            raise ValueError(f"{other} points to the partition currently in use")
         if manifest.image(part).raw_size > env.part_size(other):
             raise bundle.UpdateError("too_large")
         targets[part] = other
     return targets
+
+
+# rpi-image-gen 只在映像比較新時重設 slot 的 /var，裝舊版會沿用較新版本的資料。
+# 刪掉 var/.updated，下次開進該 slot 時就一定用映像內容重建：
+#
+#   閒置 slot 是 a 或 b？ ─────否──┐
+#   slots/system_x/var 存在？ ─否──┴─> ValueError（不寫分割區）
+#          │是
+#   刪 var/.updated（本來就沒有也可以）──> fsync 目錄
+def _reset_var(env):
+    """讓閒置 slot 下次開機時重建 /var。"""
+    name = env.slot("other")
+    var = env.persistent_slots / f"system_{name}" / "var"
+    if name == "?" or not var.is_dir():
+        raise ValueError(f"/var of the inactive slot not found: {var}")
+    (var / ".updated").unlink(missing_ok=True)
+    state.fsync_dir(var)
 
 
 def _feed(source, sink, errors):
@@ -86,7 +104,7 @@ def _write_image(env, member, device, progress):
         try:
             sparse.write(process.stdout, out, limit, progress)
             if process.stdout.read(1):
-                raise ValueError("sparse 映像後面有多餘資料")
+                raise ValueError("unexpected data after the sparse image")
         except BaseException:
             process.kill()
             raise
@@ -95,7 +113,7 @@ def _write_image(env, member, device, progress):
             process.stdout.close()
             code = process.wait()
         if code or errors:
-            raise ValueError(f"解壓縮失敗（{code}）{errors}")
+            raise ValueError(f"decompression failed ({code}) {errors}")
         out.flush()
         os.fsync(out.fileno())
 
@@ -105,8 +123,8 @@ def _write_image(env, member, device, progress):
 #   state=verifying
 #     ├─ 項目名稱、順序、雜湊 ──不符──> UpdateError(bad_bundle / bad_hash)
 #     ├─ 機型 ──────────────────不符──> UpdateError(wrong_device)
-#     ├─ epoch 比目前新？ ──────否────> UpdateError(not_newer)
 #     └─ 閒置 slot 與容量（_targets）
+#   重設閒置 slot 的 /var（_reset_var）
 #   state=writing ──> 寫 boot ──> 寫 system
 def _install(env):
     """回傳 (版本, 目標 system 裝置)。"""
@@ -115,9 +133,8 @@ def _install(env):
     version = manifest.version
     if manifest.device_class != env.conf("device-class"):
         raise bundle.UpdateError("wrong_device")
-    if manifest.source_date_epoch <= int(env.conf("epoch")):
-        raise bundle.UpdateError("not_newer")
     targets = _targets(env, manifest)
+    _reset_var(env)
     state.write(env, "writing", target=version)
     with tarfile.open(env.pending, "r:") as tar:
         for part, device in targets.items():
@@ -147,7 +164,7 @@ def apply(env):
         return
     if state.read(env)["state"] == "pending":
         # 閒置 slot 是唯一確認過的舊版本，這時覆寫就沒有退路
-        log.error("busy：上一次更新還沒確認")
+        log.error("busy: the previous update has not been confirmed yet")
         env.pending.unlink()
         return
     target = None
@@ -156,11 +173,11 @@ def apply(env):
         version, slot_dev = _install(env)
         state.write(env, "pending", target=version, slot_dev=slot_dev)
     except bundle.UpdateError as error:
-        log.error("拒絕更新：%s", error.code)
+        log.error("update rejected: %s", error.code)
         state.write(env, "failed", error=error.code, target=target)
         return
     except Exception:
-        log.exception("寫入失敗")
+        log.exception("write failed")
         state.write(env, "failed", error="write_failed", target=target)
         return
     finally:
@@ -169,7 +186,7 @@ def apply(env):
     try:
         env.run(["reboot", "0 tryboot"])
     except Exception:
-        log.exception("無法重開機")
+        log.exception("unable to reboot")
         state.write(env, "failed", error="write_failed", target=version)
 
 

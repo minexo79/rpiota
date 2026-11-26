@@ -1,3 +1,8 @@
+"""commit.py 的測試。
+
+修改紀錄：
+  2026-11-26：新增 autoboot.txt 原地覆寫、檔案不存在時重建兩個測試。
+"""
 import os
 import tempfile
 import unittest
@@ -44,6 +49,21 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(commit.commit(self.env, **self.kwargs()), "committed")
         self.assertEqual(self.env.autoboot.read_text(), "[all]\nboot_partition=3\n")
         self.assertEqual(self.result(), ("committed", None))
+
+    def test_commit_overwrites_autoboot_in_place(self):
+        # FAT 上用改名取代檔案，斷電可能只留下壞掉的目錄項目，開機檔必須原地覆寫
+        self.env.autoboot.write_text("x" * 200)  # 比新內容長，要截掉
+        before = self.env.autoboot.stat().st_ino
+        self.pending()
+        commit.commit(self.env, **self.kwargs())
+        self.assertEqual(self.env.autoboot.stat().st_ino, before)
+        self.assertEqual(self.env.autoboot.read_text(), "[all]\nboot_partition=3\n")
+
+    def test_commit_recreates_missing_autoboot(self):
+        self.env.autoboot.unlink()
+        self.pending()
+        self.assertEqual(commit.commit(self.env, **self.kwargs()), "committed")
+        self.assertEqual(self.env.autoboot.read_text(), "[all]\nboot_partition=3\n")
 
     def test_unhealthy_reboots_without_commit(self):
         self.healthy = lambda unit: unit != "web.service"

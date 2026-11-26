@@ -63,7 +63,10 @@ def rewrite_tar(source, out, edit):
 
 
 def make_env(directory):
-    """分割區用一般檔案代替；active 是 slot a，other 是 slot b。"""
+    """分割區用一般檔案代替；active 是 slot a，other 是 slot b。
+
+    label 用 hard link（Windows 建 symlink 要權限）。
+    """
     root = Path(directory)
     calls = []
 
@@ -77,7 +80,10 @@ def make_env(directory):
         ota_dir=root / "ota", conf_dir=root / "conf", slot_dir=root / "slot",
         label_dir=root / "slot",
         autoboot=root / "autoboot.txt", run=run,
-        part_size=lambda path: Path(path).stat().st_size)
+        persistent_slots=root / "slots",
+        part_size=lambda path: Path(path).stat().st_size,
+        model=root / "model", compatible=root / "compatible",
+        meminfo=root / "meminfo")
     env.incoming.mkdir(parents=True)
     env.conf_dir.mkdir()
     (env.conf_dir / "version").write_text("1.0\n")
@@ -89,5 +95,10 @@ def make_env(directory):
         (env.slot_dir / slot).mkdir(parents=True)
         for part in ("boot", "system"):
             (env.slot_dir / slot / part).write_bytes(filler * (16 * BLOCK))
+    for label, slot in (("system_a", "active"), ("system_b", "other")):
+        os.link(env.slot_dir / slot / "system", env.label_dir / label)
+        var = env.persistent_slots / label / "var"
+        var.mkdir(parents=True)
+        (var / ".updated").write_text("TIMESTAMP_NSEC=1\n")
     env.calls = calls
     return env

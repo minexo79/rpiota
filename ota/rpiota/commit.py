@@ -1,5 +1,8 @@
 """開機後以 root 執行：判定上一次更新的結果。
 
+修改紀錄：
+  2026-11-26：改寫 autoboot.txt 改用 state.overwrite（原地覆寫），取代 atomic_write。
+
 verifying / writing ──> failed (interrupted)
 pending ─┬─ 開在舊 slot ──────────────> rolled_back
          └─ 開在新 slot ─┬─ 健康 ────> 改寫 autoboot.txt ─> committed
@@ -79,8 +82,9 @@ def commit(env, timeout_s=180, interval_s=5, sleep=time.sleep, clock=time.monoto
         if passed >= 2:
             config = env.run(["rpi-slot-tryboot"])
             if not config.strip():
-                raise ValueError("rpi-slot-tryboot 沒有輸出")
-            state.atomic_write(env.autoboot, config)
+                raise ValueError("rpi-slot-tryboot produced no output")
+            # FAT 上的開機設定檔要原地覆寫；寫成功後才記 committed
+            state.overwrite(env.autoboot, config)
             state.write(env, "committed", target=target)
             return "committed"
         if clock() >= deadline:
@@ -100,7 +104,7 @@ def _record_failure(env, current):
         state.write(env, "pending", error="commit_failed", target=current.get("target"),
                     slot_dev=current.get("slot_dev"))
     except OSError:
-        log.exception("無法記錄失敗原因")  # 記不下來也要照常重開
+        log.exception("unable to record the failure reason")  # 記不下來也要照常重開
 
 
 # 結束碼決定要不要重開（service 設了 FailureAction=reboot）：
@@ -115,13 +119,13 @@ def main(env, **options):
     try:
         result = commit(env, **options)
     except Exception:
-        log.exception("確認失敗")
+        log.exception("update confirmation failed")
         current = state.read(env)
         if current["state"] != "pending" or not _on_target(env, current):
             return 0
         _record_failure(env, current)
         return 1
-    log.info("更新狀態：%s", result)
+    log.info("update state: %s", result)
     return int(result == "pending")
 
 

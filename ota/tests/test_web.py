@@ -18,6 +18,7 @@ class WebTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.dir = Path(self.tmp.name)
         self.env = make_env(self.dir / "device")
+        self.env.model.write_bytes(b"Test Board Rev 1.0\0")
         self.bundle = make_bundle(self.dir)[0].read_bytes()
         static = Path(__file__).resolve().parents[1] / "web"
         self.server = web.make_server(self.env, "127.0.0.1", 0, static)
@@ -44,8 +45,10 @@ class WebTest(unittest.TestCase):
         status, data = self.api("GET", "/api/status")
         self.assertEqual(status, 200)
         self.assertEqual(data, {"state": "idle", "error": None, "version": "1.0",
-                                "slot": "?", "target": None, "uploaded": None,
-                                "progress": None, "device": socket.gethostname()})
+                                "slot": "a", "target": None, "uploaded": None,
+                                "progress": None, "device": socket.gethostname(),
+                                "board": "Test Board Rev 1.0", "cpu": "unknown",
+                                "gpu": "unknown", "ram": "unknown"})
 
     def test_status_shows_progress(self):
         progress = {"part": "system", "percent": 40}

@@ -2,7 +2,7 @@
 
 PUT /api/upload ─> upload.part ─(收滿且是更新包)─> upload.ota
 POST /api/apply ─> upload.ota 改名 pending.ota ─> apply 服務接手
-GET /api/status ─> 裝置名稱、目前版本、slot、更新狀態
+GET /api/status ─> 硬體資訊、裝置名稱、目前版本、slot、更新狀態
 """
 import argparse
 import errno
@@ -14,7 +14,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import bundle, state
+from . import bundle, hwinfo, state
 from .env import Env
 
 CHUNK = 1 << 20
@@ -26,7 +26,7 @@ STATIC = {
 }
 
 
-def status(env):
+def status(env, hardware):
     current = state.read(env)
     name, error, target = current["state"], current.get("error"), current.get("target")
     if name not in BUSY and env.pending.exists():
@@ -35,7 +35,7 @@ def status(env):
     return {"state": name, "error": error, "version": env.version(), "slot": env.slot(),
             "target": target, "uploaded": bundle.version_of(env.upload),
             "progress": current.get("progress") if name == "writing" else None,
-            "device": socket.gethostname()}
+            "device": socket.gethostname(), **hardware}
 
 
 def _busy(env):
@@ -49,6 +49,7 @@ def _failure(code, error):
 def make_server(env, host, port, static_dir):
     lock = threading.Lock()  # 一次只處理一個上傳或更新
     env.part.unlink(missing_ok=True)
+    hardware = hwinfo.read(env)  # 開機後不會變，啟動時讀一次
 
     class Handler(BaseHTTPRequestHandler):
         timeout = 60
@@ -65,7 +66,7 @@ def make_server(env, host, port, static_dir):
 
         def do_GET(self):
             if self.path == "/api/status":
-                self.reply(200, status(env))
+                self.reply(200, status(env, hardware))
             elif self.path in STATIC:
                 name, content_type = STATIC[self.path]
                 self.reply(200, (Path(static_dir) / name).read_bytes(), content_type)
@@ -170,7 +171,7 @@ def make_server(env, host, port, static_dir):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OTA 更新網頁")
+    parser = argparse.ArgumentParser(description="OTA update web server")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
     for name in ("ota_dir", "conf_dir", "slot_dir", "label_dir"):

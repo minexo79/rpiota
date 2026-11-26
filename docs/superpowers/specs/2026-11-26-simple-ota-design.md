@@ -1,6 +1,6 @@
 # 精簡版 A/B OTA 設計
 
-狀態：已核可（2026-11-26），程式已實作，實機未驗證。
+狀態：已核可（2026-11-26），程式已實作，實機驗證 OK（2026-11-27）。
 
 ## 目的
 
@@ -50,18 +50,18 @@ image/           build.sh install.sh config/ layer/ systemd/ README.md
 
 | 路徑 | 行為 |
 |---|---|
-| `GET /` | 亮色 Pure.css 英文單頁（`index.html` + `app.js`），由上而下三個有外框的區塊：`Information`（版本、裝置名稱，用 `pure-table`）、`Upgrade`（進度條、`Choose File`／檔名／`Update`，上傳後直接套用）、`Log`（訊息窗可收合，預設收合）；外框是自訂 CSS，按鈕用 Raspberry Pi 紅 `#C51A4A` |
-| `GET /api/status` | `state`、`error`、`version`、`device`（主機名稱）、`slot`、`target`、`uploaded`（已上傳檔案的版本或 null）、`progress`（寫入中為 `{part, percent}`） |
+| `GET /` | 亮色 Pure.css 英文單頁（`index.html` + `app.js`），由上而下三個有外框的區塊：`Information`（主板、CPU、GPU、RAM、裝置名稱、版本，用 `pure-table`）、`Upgrade`（進度條、`Choose File`／檔名／`Update`，上傳後直接套用）、`Log`（訊息窗可收合，預設收合）；外框是自訂 CSS，按鈕用 Raspberry Pi 紅 `#C51A4A` |
+| `GET /api/status` | `state`、`error`、`version`、`device`（主機名稱）、`board`、`cpu`、`gpu`、`ram`（服務啟動時讀一次，讀不到為 `unknown`）、`slot`、`target`、`uploaded`（已上傳檔案的版本或 null）、`progress`（寫入中為 `{part, percent}`） |
 | `PUT /api/upload` | 原始檔案內容 → `incoming/upload.part`，收滿才改名 `upload.ota` |
 | `POST /api/apply` | `upload.ota` 改名為 `pending.ota`，觸發套用 |
 
 忙碌（`verifying`／`writing`／`pending`，或 `pending.ota` 已存在）時上傳與更新都回 409。`apply` 沒有已上傳檔案回 409。空間不足回 507。
 
-**apply**（root）：檢查格式、雜湊、機型、`source_date_epoch` 較新、容量；寫入閒置 slot；`state=pending`；`reboot "0 tryboot"`。結束時一定刪掉 `pending.ota`。
+**apply**（root）：檢查格式、雜湊、機型、容量；重設閒置 slot 的 `/var`（見 [允許安裝舊版](2026-11-26-allow-downgrade-design.md)）；寫入閒置 slot；`state=pending`；`reboot "0 tryboot"`。結束時一定刪掉 `pending.ota`。
 
 **commit**（root）：`health.units` 內服務連續兩次 active 才改寫 `autoboot.txt`；180 秒逾時就重開回舊版。
 
-狀態值：`idle`、`verifying`、`writing`、`pending`、`committed`、`failed`、`rolled_back`。錯誤代碼：`bad_bundle`、`bad_hash`、`wrong_device`、`not_newer`、`too_large`、`busy`、`write_failed`、`interrupted`、`health_failed`、`commit_failed`、`rolled_back`、`no_space`、`no_upload`。網頁把代碼直接寫成英文說明。
+狀態值：`idle`、`verifying`、`writing`、`pending`、`committed`、`failed`、`rolled_back`。錯誤代碼：`bad_bundle`、`bad_hash`、`wrong_device`、`too_large`、`busy`、`write_failed`、`interrupted`、`health_failed`、`commit_failed`、`rolled_back`、`no_space`、`no_upload`。網頁把代碼直接寫成英文說明。
 
 ## 映像端內容
 
@@ -73,11 +73,11 @@ image/           build.sh install.sh config/ layer/ systemd/ README.md
 
 詳細指令與路徑寫在 `image/README.md`。
 
-時間戳改存 `/etc/rpiota/epoch`，`apply` 讀它而不是 `os-release`：查 rpi-image-gen 原始碼找不到寫入 `IG_SOURCE_DATE_EPOCH` 的程式，且外部的 `SOURCE_DATE_EPOCH` 不會傳進建置。
+時間戳改存 `/etc/rpiota/epoch`（`apply` 現在不再比較它）：查 rpi-image-gen 原始碼找不到寫入 `IG_SOURCE_DATE_EPOCH` 的程式，且外部的 `SOURCE_DATE_EPOCH` 不會傳進建置。
 
 ## 驗證
 
-本機（Windows、Python 3.13）跑單元測試，分割區用一般檔案、重開機用假函式代替，網頁用瀏覽器實際操作。**不驗證**：真實的 sparse 寫入、systemd、tryboot、實機開機。
+本機（Windows、Python 3.13）跑單元測試，分割區用一般檔案、重開機用假函式代替，網頁用瀏覽器實際操作。**單元測試不涵蓋**：真實的 sparse 寫入、systemd、tryboot、實機開機（這些由實機檢查確認）。
 
 ## 需要下載
 

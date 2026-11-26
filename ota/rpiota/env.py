@@ -1,6 +1,6 @@
 """裝置上的路徑與外部指令；測試與本機試跑時換掉。
 
-Env ──> state / apply / commit / web
+Env ──> state / apply / commit / web / hwinfo
 """
 import os
 import subprocess
@@ -26,8 +26,12 @@ class Env:
     slot_dir: Path = Path("/dev/disk/by-slot")
     label_dir: Path = Path("/dev/disk/by-partlabel")
     autoboot: Path = Path("/bootfs/autoboot.txt")
+    persistent_slots: Path = Path("/persistent/slots")
     run: Callable = run_command
     part_size: Callable = device_size
+    model: Path = Path("/proc/device-tree/model")
+    compatible: Path = Path("/proc/device-tree/compatible")
+    meminfo: Path = Path("/proc/meminfo")
 
     @property
     def incoming(self):
@@ -57,13 +61,13 @@ class Env:
         except OSError:
             return "unknown"
 
-    def slot(self):
-        """目前開機的 slot：a、b，判斷不出來回 ?。"""
-        active = self.slot_dir / "active" / "system"
-        if not active.exists():
+    def slot(self, which="active"):
+        """which（active：目前開機的、other：閒置的）是哪個 slot：a、b，判斷不出來回 ?。"""
+        system = self.slot_dir / which / "system"
+        if not system.exists():
             return "?"
         for name in ("a", "b"):
             label = self.label_dir / f"system_{name}"
-            if label.exists() and os.path.realpath(label) == os.path.realpath(active):
+            if label.exists() and os.path.samefile(label, system):
                 return name
         return "?"

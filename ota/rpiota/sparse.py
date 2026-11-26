@@ -20,7 +20,7 @@ def _read(stream, size):
     while len(data) < size:
         more = stream.read(size - len(data))
         if not more:
-            raise ValueError("sparse 資料不完整")
+            raise ValueError("incomplete sparse data")
         data += more
     return data
 
@@ -30,7 +30,7 @@ def _header(stream):
         HEADER.unpack(_read(stream, HEADER.size)))
     if (magic != MAGIC or major != 1 or file_header_size < HEADER.size
             or chunk_header_size < CHUNK.size or not block or block % 4):
-        raise ValueError("不是 sparse 格式的映像")
+        raise ValueError("image is not in sparse format")
     _read(stream, file_header_size - HEADER.size)
     return chunk_header_size, block, blocks, chunks
 
@@ -69,7 +69,7 @@ def write(stream, out, limit, progress=None):
     chunk_header_size, block, blocks, chunks = _header(stream)
     total = block * blocks
     if total > limit:
-        raise ValueError("映像大於分割區")
+        raise ValueError("image is larger than the partition")
     position = 0
     for _ in range(chunks):
         kind, _, count, chunk_bytes = CHUNK.unpack(_read(stream, CHUNK.size))
@@ -79,10 +79,10 @@ def write(stream, out, limit, progress=None):
             _read(stream, payload)
             continue
         if position + length > total:
-            raise ValueError("chunk 超出映像大小")
+            raise ValueError("chunk exceeds the image size")
         expected = {RAW: length, FILL: 4, DONT_CARE: 0}.get(kind)
         if payload != expected:
-            raise ValueError("chunk 長度不符")
+            raise ValueError("chunk length mismatch")
         out.seek(position)
         if kind == DONT_CARE:
             position += length
@@ -95,5 +95,5 @@ def write(stream, out, limit, progress=None):
             if progress:
                 progress(position, total)
     if position != total:
-        raise ValueError("區塊總數不符")
+        raise ValueError("total block count mismatch")
     return total

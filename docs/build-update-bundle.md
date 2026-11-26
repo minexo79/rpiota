@@ -6,7 +6,7 @@
 flowchart LR
     V["決定版本號"] --> B["image/build.sh"]
     B -->|"rpi-image-gen<br/>boot.sparse, system.sparse"| P["自動打包"]
-    P --> R["out/update-版本.ota"]
+    P --> R["build/update-版本.ota"]
     R --> U["網頁選檔 → Update"]
 ```
 
@@ -16,7 +16,7 @@ flowchart LR
 RPIOTA_VERSION=1.0.1 RPIOTA_SSH_PUBKEY=~/.ssh/id_ed25519.pub bash image/build.sh
 ```
 
-完成後更新包在 `out/update-1.0.1.ota`。版本號與建置時間戳會同時寫進映像和更新包，不用另外設定。裝置只接受建置時間比目前映像新的包。
+完成後更新包在 `build/update-1.0.1.ota`。版本號與建置時間戳會同時寫進映像和更新包，不用另外設定。裝置不限版本新舊，舊版與同版也能安裝；寫入的 slot 下次開機時會用映像內容重建 `/var`。
 
 ## 只重新打包
 
@@ -24,7 +24,7 @@ RPIOTA_VERSION=1.0.1 RPIOTA_SSH_PUBKEY=~/.ssh/id_ed25519.pub bash image/build.sh
 
 ```bash
 PYTHONPATH=ota python3 -m rpiota.bundle \
-  --image-dir ~/rpi-ota-work/image-rpiota \
+  --image-dir build/rpi-ota-work/image-rpiota \
   --version 1.0.1 --epoch <建置時間戳> --out update-1.0.1.ota
 ```
 
@@ -39,8 +39,8 @@ PYTHONPATH=ota python3 -m rpiota.bundle \
 ## 檢查內容
 
 ```bash
-tar -tf out/update-1.0.1.ota
-tar -xOf out/update-1.0.1.ota manifest.json
+tar -tf build/update-1.0.1.ota
+tar -xOf build/update-1.0.1.ota manifest.json
 ```
 
 應依序列出 `manifest.json`、`boot.sparse.zst`、`system.sparse.zst`。不要手動重新打包：項目順序或內容改變，裝置會拒收。
@@ -51,7 +51,7 @@ tar -xOf out/update-1.0.1.ota manifest.json
 
 ## 第一次燒錄
 
-`.ota` 只能更新已經在跑 A/B 映像的裝置。第一次要燒完整映像 `~/rpi-ota-work/image-rpiota/rpiota.img` 到 SD 卡（16 GB 以上）。
+`.ota` 只能更新已經在跑 A/B 映像的裝置。第一次要燒完整映像 `build/rpiota-<版本>.img.zst` 到 SD 卡（8 GB 以上）。
 
 ## 錯誤代碼
 
@@ -60,7 +60,6 @@ tar -xOf out/update-1.0.1.ota manifest.json
 | `bad_bundle` | 不是更新包，或上傳不完整 | 重新打包、重新上傳 |
 | `bad_hash` | 內容損毀 | 重新上傳 |
 | `wrong_device` | 機型不符 | 用正確的 `--device-class` 打包 |
-| `not_newer` | 建置時間沒有比目前映像新 | 重新建置 |
 | `too_large` | 映像大於分割區 | 調整 `image/config/ota.yaml` 的大小 |
 | `write_failed` | 寫入失敗 | 看 `journalctl -u rpiota-apply` |
 | `interrupted` | 寫入中斷電 | 重新上傳 |

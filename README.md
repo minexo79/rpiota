@@ -1,11 +1,7 @@
-<center>
-    <h1>Rpiota</h1>
-    <p>不依靠Rpi connect，只在同個網域內上傳 & 更新OTA更新包的專案</p>
-    <img src="docs/images/web.png" />
-</center>
+# Rpiota
+不依靠Raspberry Pi Connect服務，透過rpi-image-gen產生Image後，使用自製網頁在上傳 & 更新OTA鏡像。
 
 ## 檔案結構
-
 ```text
 Rpiota/
 ├── docs/                 文件與截圖
@@ -22,6 +18,9 @@ Rpiota/
 ├── app/                  範例程式（Hello OTA）
 └── README.md             專案簡介與文件連結
 ```
+
+## 網頁介面
+![](docs/images/web.png)
 
 ## 連結
 

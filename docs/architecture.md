@@ -26,8 +26,8 @@ flowchart LR
 | 元件 | 身分 | 工作 |
 |---|---|---|
 | `app/hello.py` | 一般服務 | 每 3 秒印 `Hello OTA <版本>`，用來確認目前跑的是哪一版；獨立範例，裝在 `/opt/app/` |
-| `web.py` + `web/index.html`、`web/app.js` | 非 root | 英文頁面：顯示版本與裝置名稱、選更新檔、按 Update、進度條與 log 窗（Pure.css，亮色） |
-| `apply.py` | root | 檢查雜湊、機型、版本、大小，寫入閒置 slot，試開機 |
+| `web.py` + `web/index.html`、`web/app.js` | 非 root | 英文頁面：顯示主板、CPU、GPU、RAM、裝置名稱與版本、選更新檔、按 Update、進度條與 log 窗（Pure.css，亮色） |
+| `apply.py` | root | 檢查雜湊、機型、大小，重設閒置 slot 的 `/var`，寫入該 slot，試開機 |
 | `commit.py` | root | 開機後確認服務正常才改 `autoboot.txt`，否則回滾 |
 | `bundle.py` | PC 與裝置 | 打包與檢查更新檔 |
 | `sparse.py` | 裝置 | 把 `*.sparse` 映像寫進分割區 |
@@ -47,7 +47,7 @@ flowchart LR
 
 ## 建置
 
-在 arm64 的 Debian／Raspberry Pi OS 上：
+在 arm64 的 Debian／Raspberry Pi OS 上（x86 透過 QEMU 可能可以，官方不保證）：
 
 ```bash
 RPIOTA_VERSION=1.0.0 RPIOTA_SSH_PUBKEY=~/.ssh/id_ed25519.pub bash image/build.sh
@@ -65,4 +65,4 @@ python3 -m unittest discover -s ota/tests -t ota
 
 Windows 上指令是 `python`。測試輸出中的錯誤堆疊來自故意製造失敗的案例，以最後一行 `OK` 為準。
 
-分割區用一般檔案代替，重開機與 systemd 用假函式代替。**映像還沒有實際建置過，也沒有在實機驗證過。**
+分割區用一般檔案代替，重開機與 systemd 用假函式代替。

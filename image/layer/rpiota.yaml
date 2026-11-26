@@ -4,7 +4,7 @@
 # X-Env-Layer-Desc: A/B OTA services, update web page and Hello OTA
 # X-Env-Layer-Version: 1.0.0
 # X-Env-VarRequires: IGconf_rpiota_src,IGconf_rpiota_version,IGconf_rpiota_epoch
-# X-Env-VarRequires-Valid: string,regex:^[A-Za-z0-9._+-]{1,64}$,regex:^[0-9]+$
+# X-Env-VarRequires-Valid: string,regex:^[A-Za-z0-9._+-]+$,regex:^[0-9]+$
 # METAEND
 ---
 # 安裝步驟寫在 image/install.sh，這裡只列套件並呼叫它。
