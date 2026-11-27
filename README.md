@@ -1,5 +1,5 @@
 # Rpiota
-不依靠Raspberry Pi Connect服務，透過rpi-image-gen產生Image後，使用自製網頁在上傳 & 更新OTA鏡像。
+不依靠Raspberry Pi Connect，透過rpi-image-gen產生Image後，使用自製網頁服務上傳 & 更新OTA鏡像。
 
 ## 檔案結構
 ```text
